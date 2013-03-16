@@ -33,6 +33,11 @@ Z80::~Z80()
    HL 6
 */
 
+void kikoo(int t)
+{
+  std::cout << t << std::endl;
+}
+
 int Z80::step()
 {
   UBYTE opcode = READ_MEM(_PC++);
@@ -75,6 +80,16 @@ int Z80::step()
   case 0xE6: AND(A, READ_MEM(PC++)); return 7;
   case 0xA6: AND(A, READ_MEM(HL)); return 7;
 
+    /* CALL */
+  case 0xCD: return CALL(true) ? 17 : 1;
+  case 0xDC: return CALL(F_C) ? 17 : 1;
+  case 0xD4: return CALL(!F_C) ? 17 : 1;
+  case 0xFC: return CALL(F_S) ? 17 : 1;
+  case 0xF4: return CALL(!F_S) ? 17 : 1;
+  case 0xCC: return CALL(F_Z) ? 17 : 1;
+  case 0xC4: return CALL(!F_Z) ? 17 : 1;
+  case 0xEC: return CALL(F_PV) ? 17 : 1;
+  case 0xE4: return CALL(!F_pV) ? 17 : 1;
 
   default:
     std::cout << "Unknown opcode: " << std::hex
@@ -82,6 +97,7 @@ int Z80::step()
 	      << std::endl;
     break;
   }
+
   return 0;
 }
 
@@ -92,8 +108,8 @@ void Z80::push8(UBYTE value)
 
 void Z80::push16(UWORD value)
 {
-  push8(value & 0xff);
-  push8(value >> 8);
+  SP -= 2;
+  WRITE_MEM16(SP, value);
 }
 
 UBYTE Z80::pop8()
@@ -103,8 +119,8 @@ UBYTE Z80::pop8()
 
 UWORD Z80::pop16()
 {
-  UWORD ret = pop8();
-  ret = ret | (pop8() << 8);
+  UWORD ret = READ_MEM16(SP);
+  SP += 2;
   return ret;
 }
 
@@ -164,8 +180,15 @@ void Z80::BIT(UBYTE value, UBYTE bit)
   F_N = 0;
 }
 
-void Z80::CALL(UBYTE value)
+bool Z80::CALL(bool cond)
 {
+  UWORD value = READ_MEM16(PC);
+  PC += 2;
+  if (!cond)
+    return false;
+  push16(PC);
+  PC = value;
+  return true;
 }
 
 

@@ -69,6 +69,9 @@ typedef union
 # define READ_MEM(a) (_mmu->readMem(a))
 # define WRITE_MEM(a, d) (_mmu->writeMem(a, d))
 
+# define READ_MEM16(a) (_mmu->readMem16(a))
+# define WRITE_MEM16(a, d) (_mmu->writeMem16(a, d))
+
 # define READ_IO(a) (_mmu->readIOPorts(a))
 # define WRITE_IO(a, d) (_mmu->writeIOPorts(a, d))
 
@@ -91,7 +94,7 @@ public:
   void ADC16(UWORD& dest, UWORD value);
   void AND(UBYTE& dest, UBYTE value);
   void BIT(UBYTE value, UBYTE bit);
-  void CALL(UBYTE value);
+  bool CALL(bool cond);
 
 private:
   FRegister _AF;

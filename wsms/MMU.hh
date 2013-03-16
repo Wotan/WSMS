@@ -16,8 +16,8 @@ public:
   static std::size_t const maxRamSize = 0x2000;
 
 public:
-  virtual inline UBYTE read(UWORD addr) = 0;
-  virtual inline void write(UWORD addr, UBYTE value) = 0;
+  virtual UBYTE read(UWORD addr) = 0;
+  virtual void write(UWORD addr, UBYTE value) = 0;
 };
 
 class SegaMapper : public MemoryMapper {
@@ -32,8 +32,8 @@ public:
   }
   virtual ~SegaMapper() {}
 
-  virtual inline UBYTE read(UWORD addr);
-  virtual inline void write(UWORD addr, UBYTE value);
+  virtual UBYTE read(UWORD addr);
+  virtual void write(UWORD addr, UBYTE value);
 
 protected:
   UBYTE _ram[MemoryMapper::maxRamSize];
@@ -57,10 +57,23 @@ public:
     assert(_mapper);
     return _mapper->read(addr);
   }
+
+  inline UWORD readMem16(UWORD addr) {
+    UWORD ret = readMem(addr) << 8;
+    ret |= readMem(addr + 1);
+    return ret;
+  }
+
   inline void writeMem(UWORD addr, UBYTE value) {
     assert(_mapper);
     _mapper->write(addr, value);
   }
+
+  inline void writeMem16(UWORD addr, UWORD value) {
+    writeMem(addr, value & 0xff);
+    writeMem(addr + 1, value >> 8);
+  }
+
 
 private:
   void displayCartridgeInfo() const;
@@ -81,8 +94,6 @@ private:
   MemoryMapper* _mapper;
 };
 
-
 }
-
 
 #endif /* !_MEMORY_H_ */
