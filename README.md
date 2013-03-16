@@ -1,4 +1,4 @@
 WSMS
 ====
 
-A Sega Master System
+A Sega Master System emulator
