@@ -89,12 +89,30 @@ public:
   UBYTE pop8();
   UWORD pop16();
 
-  void ADD8(UBYTE& dest, UBYTE value, UBYTE carry = 0);
-  void ADD16(UWORD& dest, UWORD value);
-  void ADC16(UWORD& dest, UWORD value);
-  void AND(UBYTE& dest, UBYTE value);
+  void ADD8(UBYTE& a, UBYTE b, UBYTE carry = 0);
+  void ADD16(UWORD& a, UWORD b);
+  void ADC16(UWORD& a, UWORD b);
+
+  void SUB8(UBYTE& a, UBYTE b, UBYTE carry);
+  void SBC16(UWORD& a, UWORD b);
+
+  void AND(UBYTE& a, UBYTE b);
+  void OR(UBYTE& a, UBYTE b);
+  void XOR(UBYTE& a, UBYTE b);
+
   void BIT(UBYTE value, UBYTE bit);
+  void RES(UBYTE& v, UBYTE bit);
+  void SET(UBYTE& v, UBYTE bit);
+
   bool CALL(bool cond);
+  void CP(UBYTE a, UBYTE b);
+  void DEC8(UBYTE& a);
+  void DEC16(UWORD& a);
+  void INC8(UBYTE& a);
+  void INC16(UWORD& a);
+  void EX(UWORD& a, UWORD& b);
+
+
 
 private:
   FRegister _AF;

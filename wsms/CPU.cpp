@@ -33,14 +33,11 @@ Z80::~Z80()
    HL 6
 */
 
-void kikoo(int t)
-{
-  std::cout << t << std::endl;
-}
-
 int Z80::step()
 {
   UBYTE opcode = READ_MEM(_PC++);
+  std::cout << (int)opcode << std::endl;
+
 
   switch (opcode) {
     /* ADC */
@@ -89,7 +86,296 @@ int Z80::step()
   case 0xCC: return CALL(F_Z) ? 17 : 1;
   case 0xC4: return CALL(!F_Z) ? 17 : 1;
   case 0xEC: return CALL(F_PV) ? 17 : 1;
-  case 0xE4: return CALL(!F_pV) ? 17 : 1;
+  case 0xE4: return CALL(!F_PV) ? 17 : 1;
+
+    /* CCF */
+  case 0x3F: F_C = ~F_C; F_N = 0; return 4;
+
+    /* CP */
+  case 0xB8 + 7: CP(A, A); return 4;
+  case 0xB8 + 0: CP(A, B); return 4;
+  case 0xB8 + 1: CP(A, C); return 4;
+  case 0xB8 + 2: CP(A, D); return 4;
+  case 0xB8 + 3: CP(A, E); return 4;
+  case 0xB8 + 4: CP(A, H); return 4;
+  case 0xB8 + 5: CP(A, L); return 4;
+  case 0xFE: CP(A, READ_MEM(PC++)); return 7;
+  case 0xBE: CP(A, READ_MEM(HL)); return 7;
+
+    /* CPL */
+  case 0x2F: A = ~A; F_N = F_H = 1; return 4;
+
+    /* DDA */
+  case 0x27: /* TODO */ return 4;
+
+    /* DEC */
+  case 0x3D: DEC8(A); return 4;
+  case 0x05: DEC8(B); return 4;
+  case 0x0D: DEC8(C); return 4;
+  case 0x15: DEC8(D); return 4;
+  case 0x1D: DEC8(E); return 4;
+  case 0x25: DEC8(H); return 4;
+  case 0x2D: DEC8(L); return 4;
+  case 0x35: { UBYTE r = READ_MEM(HL); DEC8(r); WRITE_MEM(HL, r); } return 11;
+
+  case 0x0B: DEC16(BC); return 6;
+  case 0x1B: DEC16(DE); return 6;
+  case 0x2B: DEC16(HL); return 6;
+  case 0x3B: DEC16(SP); return 6;
+
+    /* DI */
+  case 0xF3: return 4;
+
+    /* DJNZ */
+  case 0x10: return 0;
+
+    /* EI */
+  case 0xFB: return 4;
+
+    /* EX */
+  case 0xE3: { UWORD v = READ_MEM16(SP); EX(v, HL); WRITE_MEM16(SP, v); } return 19;
+  case 0x08: EX(AF, _sAF); return 4;
+  case 0xEB: EX(DE, HL); return 4;
+  case 0xD9: EX(BC, _sBC); EX(DE, _sDE); EX(HL, _sHL); return 4;
+
+    /* HALT */
+  case 0x76: return 4;
+
+    /* IN */
+
+    /* INC */
+  case 0x3C: INC8(A); return 4;
+  case 0x04: INC8(B); return 4;
+  case 0x0C: INC8(C); return 4;
+  case 0x14: INC8(D); return 4;
+  case 0x1C: INC8(E); return 4;
+  case 0x24: INC8(H); return 4;
+  case 0x2C: INC8(L); return 4;
+
+  case 0x03: INC16(BC); return 6;
+  case 0x13: INC16(DE); return 6;
+  case 0x23: INC16(HL); return 6;
+  case 0x33: INC16(SP); return 6;
+
+  case 0x34: { UBYTE v = READ_MEM(HL); INC8(v); WRITE_MEM(HL, v); } return 11;
+
+    /* JP */
+  case 0xC3: PC = READ_MEM16(PC); return 10;
+  case 0xE9: PC = READ_MEM16(HL); return 4;
+
+  case 0xDA: if (F_C) return PC = READ_MEM16(PC), 10; else return PC += 2, 1;
+  case 0xD2: if (!F_C) return PC = READ_MEM16(PC), 10; else return PC += 2, 1;
+  case 0xFA: if (F_S) return PC = READ_MEM16(PC), 10; else return PC += 2, 1;
+  case 0xF2: if (!F_S) return PC = READ_MEM16(PC), 10; else return PC += 2, 1;
+  case 0xCA: if (F_Z) return PC = READ_MEM16(PC), 10; else return PC += 2, 1;
+  case 0xC2: if (!F_Z) return PC = READ_MEM16(PC), 10; else return PC += 2, 1;
+  case 0xEA: if (F_PV) return PC = READ_MEM16(PC), 10; else return PC += 2, 1;
+  case 0xE2: if (!F_PV) return PC = READ_MEM16(PC), 10; else return PC += 2, 1;
+
+    /* JR */
+  case 0x18: PC += READ_MEM(PC++); return 12;
+  case 0x38: if (F_C) return PC += READ_MEM(PC++), 12; else return PC++, 4;
+  case 0x30: if (!F_C) return PC += READ_MEM(PC++), 12; else return PC++, 4;
+  case 0x28: if (F_Z) return PC += READ_MEM(PC++), 12; else return PC++, 4;
+  case 0x20: if (!F_Z) return PC += READ_MEM(PC++), 12; else return PC++, 4;
+
+    /* LD */
+  case 0x78 + 7: A = A; return 4;
+  case 0x78 + 0: A = B; return 4;
+  case 0x78 + 1: A = C; return 4;
+  case 0x78 + 2: A = D; return 4;
+  case 0x78 + 3: A = E; return 4;
+  case 0x78 + 4: A = H; return 4;
+  case 0x78 + 5: A = L; return 4;
+  case 0x3E: A = READ_MEM(PC++); return 7;
+  case 0x0A: A = READ_MEM(BC); return 7;
+  case 0x1A: A = READ_MEM(DE); return 7;
+  case 0x7E: A = READ_MEM(HL); return 7;
+  case 0x3A: A = READ_MEM(READ_MEM16(PC)); PC += 2; return 13;
+
+  case 0x40 + 7: B = A; return 4;
+  case 0x40 + 0: B = B; return 4;
+  case 0x40 + 1: B = C; return 4;
+  case 0x40 + 2: B = D; return 4;
+  case 0x40 + 3: B = E; return 4;
+  case 0x40 + 4: B = H; return 4;
+  case 0x40 + 5: B = L; return 4;
+  case 0x06: B = READ_MEM(PC++); return 7;
+  case 0x40 + 6: B = READ_MEM(HL); return 7;
+
+  case 0x48 + 7: C = A; return 4;
+  case 0x48 + 0: C = B; return 4;
+  case 0x48 + 1: C = C; return 4;
+  case 0x48 + 2: C = D; return 4;
+  case 0x48 + 3: C = E; return 4;
+  case 0x48 + 4: C = H; return 4;
+  case 0x48 + 5: C = L; return 4;
+  case 0x0E: C = READ_MEM(PC++); return 7;
+  case 0x48 + 6: C = READ_MEM(HL); return 7;
+
+  case 0x50 + 7: D = A; return 4;
+  case 0x50 + 0: D = B; return 4;
+  case 0x50 + 1: D = C; return 4;
+  case 0x50 + 2: D = D; return 4;
+  case 0x50 + 3: D = E; return 4;
+  case 0x50 + 4: D = H; return 4;
+  case 0x50 + 5: D = L; return 4;
+  case 0x16: D = READ_MEM(PC++); return 7;
+  case 0x50 + 6: D = READ_MEM(HL); return 7;
+
+  case 0x58 + 7: E = A; return 4;
+  case 0x58 + 0: E = B; return 4;
+  case 0x58 + 1: E = C; return 4;
+  case 0x58 + 2: E = D; return 4;
+  case 0x58 + 3: E = E; return 4;
+  case 0x58 + 4: E = H; return 4;
+  case 0x58 + 5: E = L; return 4;
+  case 0x1E: E = READ_MEM(PC++); return 7;
+  case 0x58 + 6: E = READ_MEM(HL); return 7;
+
+  case 0x60 + 7: H = A; return 4;
+  case 0x60 + 0: H = B; return 4;
+  case 0x60 + 1: H = C; return 4;
+  case 0x60 + 2: H = D; return 4;
+  case 0x60 + 3: H = E; return 4;
+  case 0x60 + 4: H = H; return 4;
+  case 0x60 + 5: H = L; return 4;
+  case 0x26: H = READ_MEM(PC++); return 7;
+  case 0x60 + 6: H = READ_MEM(HL); return 7;
+
+  case 0x68 + 7: L = A; return 4;
+  case 0x68 + 0: L = B; return 4;
+  case 0x68 + 1: L = C; return 4;
+  case 0x68 + 2: L = D; return 4;
+  case 0x68 + 3: L = E; return 4;
+  case 0x68 + 4: L = H; return 4;
+  case 0x68 + 5: L = L; return 4;
+  case 0x2E: L = READ_MEM(PC++); return 7;
+  case 0x68 + 6: L = READ_MEM(HL); return 7;
+
+  case 0x01: BC = READ_MEM16(PC); PC += 2; return 10;
+  case 0x11: DE = READ_MEM16(PC); PC += 2; return 10;
+  case 0x2A: HL = READ_MEM16(READ_MEM16(PC)); PC += 2; return 10;
+  case 0x21: HL = READ_MEM16(PC); PC += 2; return 10;
+  case 0xF9: SP = HL; return 10;
+  case 0x31: SP = READ_MEM16(PC); PC += 2; return 10;
+
+  case 0x70 + 7: WRITE_MEM(HL, A); return 7;
+  case 0x70 + 0: WRITE_MEM(HL, B); return 7;
+  case 0x70 + 1: WRITE_MEM(HL, C); return 7;
+  case 0x70 + 2: WRITE_MEM(HL, D); return 7;
+  case 0x70 + 3: WRITE_MEM(HL, E); return 7;
+  case 0x70 + 4: WRITE_MEM(HL, H); return 7;
+  case 0x70 + 5: WRITE_MEM(HL, L); return 7;
+  case 0x36: WRITE_MEM(HL, READ_MEM(PC++)); return 10;
+
+  case 0x02: WRITE_MEM(BC, A); return 7;
+  case 0x12: WRITE_MEM(DE, A); return 7;
+  case 0x32: WRITE_MEM(READ_MEM16(PC), A); PC += 2; return 13;
+  case 0x22: WRITE_MEM16(READ_MEM16(PC), HL); PC += 2; return 16;
+
+    /* NOP */
+  case 0x00: return 4;
+
+    /* OR */
+  case 0xB0 + 7: OR(A, A); return 4;
+  case 0xB0 + 0: OR(A, B); return 4;
+  case 0xB0 + 1: OR(A, C); return 4;
+  case 0xB0 + 2: OR(A, D); return 4;
+  case 0xB0 + 3: OR(A, E); return 4;
+  case 0xB0 + 4: OR(A, H); return 4;
+  case 0xB0 + 5: OR(A, L); return 4;
+  case 0xF6: OR(A, READ_MEM(PC++)); return 7;
+  case 0xB6: OR(A, READ_MEM(HL)); return 7;
+
+    /* OUT */
+  case 0xD3: WRITE_IO(READ_MEM(PC++), A); return 11;
+
+    /* POP */
+  case 0xF1: AF = pop16(); return 10;
+  case 0xC1: BC = pop16(); return 10;
+  case 0xD1: DE = pop16(); return 10;
+  case 0xE1: HL = pop16(); return 10;
+
+    /* PUSH */
+  case 0xF5: push16(AF); return 11;
+  case 0xC5: push16(BC); return 11;
+  case 0xD5: push16(DE); return 11;
+  case 0xE5: push16(HL); return 11;
+
+    /* RET */
+  case 0xC9: PC = pop16(); return 10;
+  case 0xD8: if (F_C) return PC = pop16(), 10; else return 5;
+  case 0xD0: if (!F_C) return PC = pop16(), 10; else return 5;
+  case 0xF8: if (F_S) return PC = pop16(), 10; else return 5;
+  case 0xF0: if (!F_S) return PC = pop16(), 10; else return 5;
+  case 0xC8: if (F_Z) return PC = pop16(), 10; else return 5;
+  case 0xC0: if (!F_Z) return PC = pop16(), 10; else return 5;
+  case 0xE8: if (F_PV) return PC = pop16(), 10; else return 5;
+  case 0xE0: if (!F_PV) return PC = pop16(), 10; else return 5;
+
+    /* RLA SZHPNC -> --0-0* */
+  case 0x17: {
+    UBYTE s = F_C; F_C = (A & (1 << 7)); A <<= 1; A |= s; F_N = F_H = 0;
+  } return 4;
+
+    /* RLCA SZHPNC -> --0-0* */
+  case 0x07: F_C = (A & (1 << 7)); A <<= 1; A |= F_C; F_N = F_H = 0; return 4;
+
+    /* RRA SZHPNC ->  --0-0* */
+  case 0x1F: {
+    UBYTE s = F_C; F_C = (A & 1); A >>= 1; A |= s << 7; F_N = F_H = 0;
+  } return 4;
+
+    /* RRCA SZHPNC -> --0-0* */
+  case 0x0f: F_C = (A & 1); A >>= 1; A |= F_C << 7; F_N = F_H = 0; return 4;
+
+    /* RST */
+  case 0xC7: push16(PC); PC = 0x00; return 11;
+  case 0xCF: push16(PC); PC = 0x08; return 11;
+  case 0xD7: push16(PC); PC = 0x10; return 11;
+  case 0xDF: push16(PC); PC = 0x18; return 11;
+  case 0xE7: push16(PC); PC = 0x20; return 11;
+  case 0xEF: push16(PC); PC = 0x28; return 11;
+  case 0xF7: push16(PC); PC = 0x30; return 11;
+  case 0xFF: push16(PC); PC = 0x38; return 11;
+
+    /* SBC */
+  case 0x98 + 7: SUB8(A, A, F_C); return 4;
+  case 0x98 + 0: SUB8(A, B, F_C); return 4;
+  case 0x98 + 1: SUB8(A, C, F_C); return 4;
+  case 0x98 + 2: SUB8(A, D, F_C); return 4;
+  case 0x98 + 3: SUB8(A, E, F_C); return 4;
+  case 0x98 + 4: SUB8(A, H, F_C); return 4;
+  case 0x98 + 5: SUB8(A, L, F_C); return 4;
+  case 0xDE: SUB8(A, READ_MEM(PC++), F_C); return 7;
+  case 0x9E: SUB8(A, READ_MEM(HL), F_C); return 7;
+
+    /* SCF SZHPNC -> --0-01 */
+  case 0x37: F_H = F_N = 0; F_C = 1; return 4;
+
+    /* SUB */
+  case 0x90 + 7: SUB8(A, A, 0); return 4;
+  case 0x90 + 0: SUB8(A, B, 0); return 4;
+  case 0x90 + 1: SUB8(A, C, 0); return 4;
+  case 0x90 + 2: SUB8(A, D, 0); return 4;
+  case 0x90 + 3: SUB8(A, E, 0); return 4;
+  case 0x90 + 4: SUB8(A, H, 0); return 4;
+  case 0x90 + 5: SUB8(A, L, 0); return 4;
+  case 0xD6: SUB8(A, READ_MEM(PC++)); return 7;
+  case 0x96: SUB8(A, READ_MEM(HL)); return 7;
+
+    /* XOR */
+  case 0xA8 + 7: XOR(A, A); return 4;
+  case 0xA8 + 0: XOR(A, B); return 4;
+  case 0xA8 + 1: XOR(A, C); return 4;
+  case 0xA8 + 2: XOR(A, D); return 4;
+  case 0xA8 + 3: XOR(A, E); return 4;
+  case 0xA8 + 4: XOR(A, H); return 4;
+  case 0xA8 + 5: XOR(A, L); return 4;
+  case 0xEE: XOR(A, READ_MEM(PC++)); return 7;
+  case 0xAE: XOR(READ_MEM(HL)); return 7;
+
 
   default:
     std::cout << "Unknown opcode: " << std::hex
@@ -126,50 +412,98 @@ UWORD Z80::pop16()
 
 /* SZHPNC -> ***V0* */
 /* NB: use for both ADC 8-bit and ADD 8-bit */
-void Z80::ADD8(UBYTE& dest, UBYTE value, UBYTE carry)
+void Z80::ADD8(UBYTE& a, UBYTE b, UBYTE carry)
 {
-  F_H = ((dest & 0xf) + ((value + carry) & 0xf)) & 0x10;
-  F_C = dest + value + carry > 0xff;
-  int32_t calc32u = static_cast<BYTE>(dest) + static_cast<BYTE>(value) + carry;
-  F_PV = (calc32u > 127 || calc32u < -128);
-  dest = dest + value + carry;
-  F_S = dest & 0x80; // negative
-  F_Z = (dest == 0);
+  UBYTE r = a + b + carry;
+  F_S = (r >> 7);
+  F_Z = (r == 0);
+  F_H = (r & 0xf) < (a & 0xf);
+  F_PV = (a >> 7) == (b >> 7) && (a >> 7) != F_S;
   F_N = 0;
+  F_C = (r < a);
+  a = r;
 }
 
 /* SZHPNC -> --?-0* */
-void Z80::ADD16(UWORD& dest, UWORD value)
+void Z80::ADD16(UWORD& a, UWORD b)
 {
-  F_H = ((dest & 0xf) + ((value + F_C) & 0xf)) & 0x10;
+  UWORD r = a + b;
+  F_H = (r & 0xf) < (a & 0xf);
   F_C = 0;
-  dest = dest + value + F_C;
+  a = r;
 }
 
 /* SZHPNC -> **?V0* */
-void Z80::ADC16(UWORD& dest, UWORD value)
+void Z80::ADC16(UWORD& a, UWORD b)
 {
-  // assume in 16bit we take only 4 lsb
-  F_H = ((dest & 0xf) + ((value + F_C) & 0xf)) & 0x10;
-  F_C = dest + value + F_C > 0xffff;
-  int32_t calc32u = static_cast<BYTE>(dest) + static_cast<BYTE>(value) + F_C;
-  F_PV = (calc32u > 32767 || calc32u < -32768);
-  dest = dest + value + F_C;
-  F_S = dest & 0x8000;
-  F_Z = (dest == 0);
+  UWORD r = a + b + F_C;
+  F_S = (r >> 15);
+  F_Z = (r == 0);
+  F_PV = (a >> 15) == (b >> 15) && (a >> 15) != F_S;
   F_N = 0;
+  F_C = (r < a);
+  a = r;
+}
+
+/* SZHPNC -> ***V1* */
+void Z80::SUB8(UBYTE& a, UBYTE b, UBYTE carry)
+{
+  UBYTE r = a - b - carry;
+  F_S = (r >> 7);
+  F_Z = (r == 0);
+  F_H = (r & 0xf) > (a & 0xf);
+  F_PV = (a >> 7) == (b >> 7) && (a >> 7) != F_S; // to check
+  F_N = 1;
+  F_C = (r > a);
+  a = r;
+}
+
+/* SZHPNC -> **?V1* */
+void Z80::SBC16(UWORD& a, UWORD b)
+{
+  UWORD r = a - b - F_C;
+  F_S = (r >> 15);
+  F_Z = (r == 0);
+  F_PV = (a >> 15) == (b >> 15) && (a >> 15) != F_S;
+  F_N = 1;
+  F_C = (r > a);
+  a = r;
 }
 
 /* SZHPNC -> ***P00 */
-void Z80::AND(UBYTE& dest, UBYTE value)
+void Z80::AND(UBYTE& a, UBYTE b)
 {
-  // F_H : right ?
-  F_H = ((dest & 0xf) + (value & 0xf)) & 0x10;
-  dest = dest & value;
-  F_S = dest & 0x80;
-  F_Z = (dest == 0);
-  F_PV = (dest % 2 || dest == 1);
+  UBYTE r = a & b;
+  F_S = (a >> 7);
+  F_Z = (a == 0);
+  F_H = 0; // always false?
+  F_PV = (r % 2 || r == 1);
   F_N = F_C = 0;
+  a = r;
+}
+
+/* SZHPNC -> ***P00 */
+void Z80::OR(UBYTE& a, UBYTE b)
+{
+  UBYTE r = a | b;
+  F_S = (a >> 7);
+  F_Z = (a == 0);
+  F_H = 0; // always false?
+  F_PV = (r % 2 || r == 1);
+  F_N = F_C = 0;
+  a = r;
+}
+
+/* SZHPNC -> ***P00 */
+void Z80::XOR(UBYTE& a, UBYTE b)
+{
+  UBYTE r = a ^ b;
+  F_S = (a >> 7);
+  F_Z = (a == 0);
+  F_H = 0; // always false?
+  F_PV = (r % 2 || r == 1);
+  F_N = F_C = 0;
+  a = r;
 }
 
 /* SZHPNC -> ?*1?0- */
@@ -180,6 +514,17 @@ void Z80::BIT(UBYTE value, UBYTE bit)
   F_N = 0;
 }
 
+void Z80::RES(UBYTE& v, UBYTE bit)
+{
+  v &= ~(1 << bit);
+}
+
+void Z80::SET(UBYTE& v, UBYTE bit)
+{
+  v |= (1 << bit);
+}
+
+// flags not affected
 bool Z80::CALL(bool cond)
 {
   UWORD value = READ_MEM16(PC);
@@ -191,5 +536,55 @@ bool Z80::CALL(bool cond)
   return true;
 }
 
-
+// SZHPNC -> ***V1*
+void Z80::CP(UBYTE a, UBYTE b)
+{
+  UBYTE r = a - b;
+  F_S = r >> 7;
+  F_Z = (r == 0);
+  F_H = (r & 0xf) > (a & 0xf);
+  F_PV = (a >> 7) == (b >> 7) && (a >> 7) != F_S; // to see
+  F_N = 1;
+  F_C = r > a;
 }
+
+// SZHPNC -> ***V1-
+void Z80::DEC8(UBYTE& a)
+{
+  UBYTE r = a - 1;
+  F_S = r >> 7;
+  F_Z = (r == 0);
+  F_H = (r & 0xf) > (a & 0xf);
+  F_PV = (r == 127);
+  F_N = 1;
+  a = r;
+}
+
+void Z80::DEC16(UWORD& a)
+{
+  --a;
+}
+
+// SZHPNC -> ***V0-
+void Z80::INC8(UBYTE& a)
+{
+  UBYTE r = a + 1;
+  F_S = r >> 7;
+  F_Z = (r == 0);
+  F_H = (r & 0xf) < (a & 0xf);
+  F_PV = (r == 128);
+  F_N = 0;
+  a = r;
+}
+
+void Z80::INC16(UWORD& a)
+{
+  ++a;
+}
+
+void Z80::EX(UWORD& a, UWORD& b)
+{
+  a ^= b; b ^= a; a ^= b;
+}
+
+} // !WSMS
