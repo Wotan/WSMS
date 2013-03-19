@@ -5,6 +5,7 @@ file(
   MMU.cpp
   CPU.cpp
   Core.cpp
+  IndexInstructions.cpp
 )
 
 include_directories(../)

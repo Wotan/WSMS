@@ -22,16 +22,6 @@ Z80::~Z80()
 {
 }
 
-/*
-   A 7
-   B 0
-   C 1
-   D 2
-   E 3
-   H 4
-   L 5
-   HL 6
-*/
 
 int Z80::step()
 {
@@ -362,8 +352,8 @@ int Z80::step()
   case 0x90 + 3: SUB8(A, E, 0); return 4;
   case 0x90 + 4: SUB8(A, H, 0); return 4;
   case 0x90 + 5: SUB8(A, L, 0); return 4;
-  case 0xD6: SUB8(A, READ_MEM(PC++)); return 7;
-  case 0x96: SUB8(A, READ_MEM(HL)); return 7;
+  case 0xD6: SUB8(A, READ_MEM(PC++), 0); return 7;
+  case 0x96: SUB8(A, READ_MEM(HL), 0); return 7;
 
     /* XOR */
   case 0xA8 + 7: XOR(A, A); return 4;
@@ -374,7 +364,11 @@ int Z80::step()
   case 0xA8 + 4: XOR(A, H); return 4;
   case 0xA8 + 5: XOR(A, L); return 4;
   case 0xEE: XOR(A, READ_MEM(PC++)); return 7;
-  case 0xAE: XOR(READ_MEM(HL)); return 7;
+  case 0xAE: XOR(A, READ_MEM(HL)); return 7;
+
+    /* EXTENDED Opcodes */
+  case 0xDD: return indexInstructions(IX, 0xDD);
+  case 0xFD: return indexInstructions(IY, 0xFD);
 
 
   default:
@@ -504,6 +498,109 @@ void Z80::XOR(UBYTE& a, UBYTE b)
   F_PV = (r % 2 || r == 1);
   F_N = F_C = 0;
   a = r;
+}
+
+/* SZHPNC -> **0P0* */
+void Z80::RL(UBYTE& a)
+{
+  UBYTE s = F_C;
+  F_C = (a & (1 << 7));
+  a <<= 1;
+  a |= s;
+  F_S = (a << 7);
+  F_Z = (a == 0);
+  F_H = 0;
+  F_PV = (a % 2 || a == 1);
+  F_N = 0;
+}
+
+/* SZHPNC -> **0P0* */
+void Z80::RLC(UBYTE& a)
+{
+  F_C = (a & (1 << 7));
+  a <<= 1;
+  a |= F_C;
+  F_S = (a << 7);
+  F_Z = (a == 0);
+  F_H = 0;
+  F_PV = (a % 2 || a == 1);
+  F_N = 0;
+}
+
+/* SZHPNC -> **0P0* */
+void Z80::SLA(UBYTE& a)
+{
+  F_C = (a & (1 << 7));
+  a = static_cast<BYTE>(a) << 1; // see SRA
+  F_S = (a << 7);
+  F_Z = (a == 0);
+  F_H = 0;
+  F_PV = (a % 2 || a == 1);
+  F_N = 0;
+}
+
+/* SZHPNC -> **0P0* */
+void Z80::SLL(UBYTE& a)
+{
+  F_C = (a & (1 << 7));
+  a <<= 1;
+  F_S = (a << 7);
+  F_Z = (a == 0);
+  F_H = 0;
+  F_PV = (a % 2 || a == 1);
+  F_N = 0;
+}
+
+/* SZHPNC -> **0P0* */
+void Z80::RR(UBYTE& a)
+{
+  UBYTE s = F_C;
+  F_C = (a & 1);
+  a >>= 1;
+  a |= s << 7;
+  F_S = (a << 7);
+  F_Z = (a == 0);
+  F_H = 0;
+  F_PV = (a % 2 || a == 1);
+  F_N = 0;
+}
+
+/* SZHPNC -> **0P0* */
+void Z80::RRC(UBYTE& a)
+{
+  F_C = (A & 1);
+  A >>= 1;
+  A |= F_C;
+  F_S = (a << 7);
+  F_Z = (a == 0);
+  F_H = 0;
+  F_PV = (a % 2 || a == 1);
+  F_N = 0;
+}
+
+/* SZHPNC -> **0P0* */
+/* Arithmetic shift have to preserve MSB */
+void Z80::SRA(UBYTE& a)
+{
+  F_C = (a & 1);
+  a = static_cast<BYTE>(a) >> 1; // cast to signed to preserver MSB
+  F_S = (a << 7);
+  F_Z = (a == 0);
+  F_H = 0;
+  F_PV = (a % 2 || a == 1);
+  F_N = 0;
+}
+
+/* SZHPNC -> **0P0* */
+void Z80::SRL(UBYTE& a)
+{
+  F_C = (a & 1);
+  a >>= 1;
+  F_S = (a << 7);
+  F_Z = (a == 0);
+  F_H = 0;
+  F_PV = (a % 2 || a == 1);
+  F_N = 0;
 }
 
 /* SZHPNC -> ?*1?0- */

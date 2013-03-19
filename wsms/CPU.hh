@@ -54,6 +54,9 @@ typedef union
 # define DE _DE.a
 # define HL _HL.a
 
+# define IX _IX
+# define IY _IY
+
 # define PC _PC
 # define SP _SP
 
@@ -75,6 +78,14 @@ typedef union
 # define READ_IO(a) (_mmu->readIOPorts(a))
 # define WRITE_IO(a, d) (_mmu->writeIOPorts(a, d))
 
+# define UNKNOW_EXT_OPCODE(op) \
+  std::cout << "Unknown extended opcode (" << op << "): " << std::hex \
+     << static_cast<int>(opcode)     \
+     << std::endl;                   \
+
+# define EXT_OPCODE(op) case (op): { UBYTE opcode = READ_MEM(PC++); switch(opcode) {
+# define EXT_OPCODE_END(op) default: UNKNOW_EXT_OPCODE(op) return 0; } } break;
+
 class Z80 {
 public:
   Z80();
@@ -83,6 +94,8 @@ public:
     _mmu = mmu;
   }
   int step();
+
+  UBYTE indexInstructions(UWORD& X, UBYTE opcode);
 
   void push8(UBYTE value);
   void push16(UWORD value);
@@ -100,6 +113,16 @@ public:
   void OR(UBYTE& a, UBYTE b);
   void XOR(UBYTE& a, UBYTE b);
 
+  void RL(UBYTE& a);
+  void RLC(UBYTE& a);
+  void RR(UBYTE& a);
+  void RRC(UBYTE& a);
+
+  void SLA(UBYTE& a);
+  void SRA(UBYTE& a);
+  void SLL(UBYTE& a);
+  void SRL(UBYTE& a);
+
   void BIT(UBYTE value, UBYTE bit);
   void RES(UBYTE& v, UBYTE bit);
   void SET(UBYTE& v, UBYTE bit);
@@ -111,8 +134,6 @@ public:
   void INC8(UBYTE& a);
   void INC16(UWORD& a);
   void EX(UWORD& a, UWORD& b);
-
-
 
 private:
   FRegister _AF;
