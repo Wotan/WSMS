@@ -5,6 +5,8 @@ file(
   MMU.cpp
   CPU.cpp
   Core.cpp
+  Disassembler.cpp
+  Debugger.cpp
   IndexInstructions.cpp
 )
 

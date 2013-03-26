@@ -6,8 +6,9 @@ namespace WSMS {
 ** Opcode 0xDD/0xFD
 ** IX/IY related instructions
 */
-UBYTE Z80::indexInstructions(UWORD& I, UBYTE opcode)
+UBYTE Z80::indexInstructions(UWORD& I, UBYTE origOpcode)
 {
+  UBYTE opcode = READ_MEM(PC++);
   switch (opcode) {
   case 0x8E: ADD8(A, READ_MEM(I + READ_MEM(PC++)), F_C); return 19;
   case 0x86: ADD8(A, READ_MEM(I + READ_MEM(PC++)), 0); return 19;
@@ -112,14 +113,14 @@ UBYTE Z80::indexInstructions(UWORD& I, UBYTE opcode)
 
     default:
       std::cout << std::hex << "Unknown extended opcode ("
-                << opcode << "): " << static_cast<int>(opcode) << std::endl;
+                << origOpcode << ":" << opcode << "): " << static_cast<int>(extOpcode) << std::endl;
       return 0;
     }
   } break;
 
   default:
     std::cout << std::hex << "Unknown extended opcode ("
-              << opcode << "): " << static_cast<int>(opcode) << std::endl;
+              << origOpcode << "): " << static_cast<int>(opcode) << std::endl;
     break;
   }
   return 0;

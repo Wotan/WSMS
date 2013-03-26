@@ -103,11 +103,11 @@ UBYTE SegaMapper::read(UWORD addr)
   if (addr <= 0x03ff) { // unpaged
     return _cartridgeRom[addr];
   } else if (addr <= 0x3fff) { // slot 0
-    return _cartridgeRom[_ram[0x1ffd] * 0x4000 + addr];
+    return _cartridgeRom[(_ram[0x1ffd] & 0x3F) * 0x4000 + addr];
   } else if (addr <= 0x7fff) { // slot 1
-    return _cartridgeRom[_ram[0x1ffe] * 0x4000 + addr];
+    return _cartridgeRom[(_ram[0x1ffe] & 0x3F) * 0x4000 + addr - 0x4000];
   } else if (addr <= 0xbfff) { // slot 2 or ram
-    return _cartridgeRom[_ram[0x1fff] * 0x4000 + addr];
+    return _cartridgeRom[(_ram[0x1fff] & 0x3F) * 0x4000 + addr - 0x8000];
   } else if (addr <= 0xdfff) { // ram
     return _ram[addr - 0xc000];
   } else if (addr <= 0xffff) { // miror ram
@@ -122,11 +122,11 @@ void SegaMapper::write(UWORD addr, UBYTE value)
   if (addr <= 0x03ff) { // unpaged
     _cartridgeRom[addr] = value;
   } else if (addr <= 0x3fff) { // slot 0
-    _cartridgeRom[_ram[0x1ffd] * 0x4000 + addr] = value;
+    _cartridgeRom[(_ram[0x1ffd] & 0x3F) * 0x4000 + addr] = value;
   } else if (addr <= 0x7fff) { // slot 1
-    _cartridgeRom[_ram[0x1ffe] * 0x4000 + addr] = value;
+    _cartridgeRom[(_ram[0x1ffe] & 0x3F) * 0x4000 + addr] = value;
   } else if (addr <= 0xbfff) { // slot 2 or ram
-    _cartridgeRom[_ram[0x1fff] * 0x4000 + addr] = value;
+    _cartridgeRom[(_ram[0x1fff] & 0x3F) * 0x4000 + addr] = value;
   } else if (addr <= 0xdfff) { // ram
     _ram[addr - 0xc000] = value;
   } else if (addr <= 0xffff) { // miror ram

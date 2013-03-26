@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "CPU.hh"
+#include "Disassembler.hh"
 
 namespace WSMS {
 
@@ -16,17 +17,19 @@ Z80::Z80()
   _I = 0;
   _R = 0;
   _sAF = _sBC = _sDE = _sHL = 0;
+  _intMode = INT_MODE_0;
+  _intEnabled = false;
 }
 
 Z80::~Z80()
 {
 }
 
-
 int Z80::step()
 {
-  UBYTE opcode = READ_MEM(_PC++);
-  std::cout << (int)opcode << std::endl;
+  Disassembler disas;
+
+  UBYTE opcode = READ_MEM(PC++);
 
 
   switch (opcode) {
@@ -114,13 +117,13 @@ int Z80::step()
   case 0x3B: DEC16(SP); return 6;
 
     /* DI */
-  case 0xF3: return 4;
+  case 0xF3: setIntEnable(false); return 4;
 
     /* DJNZ */
   case 0x10: return 0;
 
     /* EI */
-  case 0xFB: return 4;
+  case 0xFB: setIntEnable(true); return 4;
 
     /* EX */
   case 0xE3: { UWORD v = READ_MEM16(SP); EX(v, HL); WRITE_MEM16(SP, v); } return 19;
@@ -129,9 +132,10 @@ int Z80::step()
   case 0xD9: EX(BC, _sBC); EX(DE, _sDE); EX(HL, _sHL); return 4;
 
     /* HALT */
-  case 0x76: return 4;
+  case 0x76: std::cout << "HALT" << std::endl; return 4;
 
     /* IN */
+  case 0xDB: A = IN(READ_MEM(PC++)); return 11;
 
     /* INC */
   case 0x3C: INC8(A); return 4;
@@ -163,11 +167,12 @@ int Z80::step()
   case 0xE2: if (!F_PV) return PC = READ_MEM16(PC), 10; else return PC += 2, 1;
 
     /* JR */
-  case 0x18: PC += READ_MEM(PC++); return 12;
-  case 0x38: if (F_C) return PC += READ_MEM(PC++), 12; else return PC++, 4;
-  case 0x30: if (!F_C) return PC += READ_MEM(PC++), 12; else return PC++, 4;
-  case 0x28: if (F_Z) return PC += READ_MEM(PC++), 12; else return PC++, 4;
-  case 0x20: if (!F_Z) return PC += READ_MEM(PC++), 12; else return PC++, 4;
+#define JR() PC += static_cast<BYTE>(READ_MEM(PC) + 1); return 12;
+  case 0x18: JR();
+  case 0x38: if (F_C) { JR(); } else return PC++, 4;
+  case 0x30: if (!F_C) { JR(); } else return PC++, 4;
+  case 0x28: if (F_Z) { JR(); } else return PC++, 4;
+  case 0x20: if (!F_Z) { JR(); } else return PC++, 4;
 
     /* LD */
   case 0x78 + 7: A = A; return 4;
@@ -369,6 +374,217 @@ int Z80::step()
     /* EXTENDED Opcodes */
   case 0xDD: return indexInstructions(IX, 0xDD);
   case 0xFD: return indexInstructions(IY, 0xFD);
+
+    /***************/
+    /*     ED      */
+    /***************/
+  case 0xED: { // ED
+    UBYTE extOpcode = READ_MEM(PC++);
+    switch(extOpcode) {
+    case 0x46: setIntMode(INT_MODE_0); return 8;
+    case 0x56: setIntMode(INT_MODE_1); return 8;
+    case 0x5E: setIntMode(INT_MODE_2); return 8;
+
+
+    case 0x4A: ADC16(HL, BC); return 15;
+    case 0x5A: ADC16(HL, DE); return 15;
+    case 0x6A: ADC16(HL, HL); return 15;
+    case 0x7A: ADC16(HL, SP); return 15;
+
+    case 0xA9: CPD(); return 16;
+    case 0xB9: return CPDR();
+    case 0xA1: CPI(); return 16;
+    case 0xB1: return CPIR();
+
+      /* IN / OUT */
+    case 0x70: IN(C); return 12;
+    case 0x78: A = IN(C); return 12;
+    case 0x40: B = IN(C); return 12;
+    case 0x48: C = IN(C); return 12;
+    case 0x50: D = IN(C); return 12;
+    case 0x58: E = IN(C); return 12;
+    case 0x60: H = IN(C); return 12;
+    case 0x68: L = IN(C); return 12;
+
+    case 0x71: OUT(0); return 12;
+    case 0x79: OUT(A); return 12;
+    case 0x41: OUT(B); return 12;
+    case 0x49: OUT(C); return 12;
+    case 0x51: OUT(D); return 12;
+    case 0x59: OUT(E); return 12;
+    case 0x61: OUT(H); return 12;
+    case 0x69: OUT(L); return 12;
+
+#define IND() WRITE_MEM(HL, IN(C)); HL--; B--; F_N = 1; F_Z = (B == 0);
+    case 0xAA: IND(); return 16;
+    case 0xBA: IND(); if (B == 0) { return 1; } PC -= 2; return 21;
+#define INI() WRITE_MEM(HL, IN(C)); HL++; B--; F_N = 1; F_Z = (B == 0);
+    case 0xA2: INI(); return 16;
+    case 0xB2: INI(); if (B == 0) { return 1; } PC -= 2; return 21;
+
+#define OUTD() OUT(READ_MEM(HL)); HL--; B--; F_N = 1; F_Z = (B == 0);
+    case 0xAB: OUTD(); return 16;
+    case 0xBB: OUTD(); if (B == 0) { return 1; } PC -= 2; return 21;
+#define OUTI() OUT(READ_MEM(HL)); HL--; B--; F_N = 1; F_Z = (B == 0);
+    case 0xA3: OUTI(); return 16;
+    case 0xB3: OUTI(); if (B == 0) { return 1; } PC -= 2; return 21;
+
+      /* LD */
+    case 0x47: I = A; return 9;
+    case 0x4F: R = A; return 9;
+    case 0x57: A = I; return 9; // flags?
+    case 0x5F: A = R; return 9; // flags?
+    case 0x4B: BC = READ_MEM16(PC); PC += 2; return 20;
+    case 0x5B: DE = READ_MEM16(PC); PC += 2; return 20;
+    case 0x7B: SP = READ_MEM16(PC); PC += 2; return 20;
+    case 0x43: WRITE_MEM16(READ_MEM16(PC), BC); PC += 2; return 20;
+    case 0x53: WRITE_MEM16(READ_MEM16(PC), DE); PC += 2; return 20;
+    case 0x73: WRITE_MEM16(READ_MEM16(PC), SP); PC += 2; return 20;
+
+#define LDD() WRITE_MEM16(READ_MEM16(HL), DE); HL--; DE--; BC--; F_H = F_N = 0; F_PV = (BC == 0);
+    case 0xA8: LDD(); return 16;
+    case 0xB8: LDD(); if (BC == 0) { return 1; } PC -= 2; return 21;
+#define LDI() WRITE_MEM16(READ_MEM16(HL), DE); HL++; DE++; BC--; F_H = F_N = 0; F_PV = (BC == 0);
+    case 0xA0: LDI(); return 16;
+    case 0xB0: LDI(); if (BC == 0) { return 1; } PC -= 2; return 21;
+
+    case 0x44: NEG(A); return 8;
+
+    case 0x42: SBC16(HL, BC); return 15;
+    case 0x52: SBC16(HL, DE); return 15;
+    case 0x62: SBC16(HL, HL); return 15;
+    case 0x72: SBC16(HL, SP); return 15;
+
+    default:
+      std::cout << std::hex << "Unknown extended opcode ("
+                << opcode << "): " << static_cast<int>(opcode) << std::endl;
+      break;
+    }
+  } break; // END 0xED
+
+    /***************/
+    /*     CB      */
+    /***************/
+  case 0xCB: {
+    UBYTE extOpcode = READ_MEM(PC++);
+    switch(extOpcode) {
+
+      /* RL */
+    case 0x10 + 7: RL(A); return 8;
+    case 0x10 + 0: RL(B); return 8;
+    case 0x10 + 1: RL(C); return 8;
+    case 0x10 + 2: RL(D); return 8;
+    case 0x10 + 3: RL(E); return 8;
+    case 0x10 + 4: RL(H); return 8;
+    case 0x10 + 5: RL(L); return 8;
+    case 0x16: { UBYTE t = READ_MEM(HL); RL(t); WRITE_MEM(HL, t); } return 15;
+
+      /* RLC */
+    case 0x00 + 7: RLC(A); return 8;
+    case 0x00 + 0: RLC(B); return 8;
+    case 0x00 + 1: RLC(C); return 8;
+    case 0x00 + 2: RLC(D); return 8;
+    case 0x00 + 3: RLC(E); return 8;
+    case 0x00 + 4: RLC(H); return 8;
+    case 0x00 + 5: RLC(L); return 8;
+    case 0x06: { UBYTE t = READ_MEM(HL); RLC(t); WRITE_MEM(HL, t); } return 15;
+
+      /* RR */
+    case 0x18 + 7: RR(A); return 8;
+    case 0x18 + 0: RR(B); return 8;
+    case 0x18 + 1: RR(C); return 8;
+    case 0x18 + 2: RR(D); return 8;
+    case 0x18 + 3: RR(E); return 8;
+    case 0x18 + 4: RR(H); return 8;
+    case 0x18 + 5: RR(L); return 8;
+    case 0x1E: { UBYTE t = READ_MEM(HL); RR(t); WRITE_MEM(HL, t); } return 15;
+
+      /* RRC */
+    case 0x08 + 7: RRC(A); return 8;
+    case 0x08 + 0: RRC(B); return 8;
+    case 0x08 + 1: RRC(C); return 8;
+    case 0x08 + 2: RRC(D); return 8;
+    case 0x08 + 3: RRC(E); return 8;
+    case 0x08 + 4: RRC(H); return 8;
+    case 0x08 + 5: RRC(L); return 8;
+    case 0x0E: { UBYTE t = READ_MEM(HL); RRC(t); WRITE_MEM(HL, t); } return 15;
+
+      /* SLA */
+    case 0x20 + 7: SLA(A); return 8;
+    case 0x20 + 0: SLA(B); return 8;
+    case 0x20 + 1: SLA(C); return 8;
+    case 0x20 + 2: SLA(D); return 8;
+    case 0x20 + 3: SLA(E); return 8;
+    case 0x20 + 4: SLA(H); return 8;
+    case 0x20 + 5: SLA(L); return 8;
+    case 0x26: { UBYTE t = READ_MEM(HL); SLA(t); WRITE_MEM(HL, t); } return 15;
+
+      /* SRA */
+    case 0x28 + 7: SRA(A); return 8;
+    case 0x28 + 0: SRA(B); return 8;
+    case 0x28 + 1: SRA(C); return 8;
+    case 0x28 + 2: SRA(D); return 8;
+    case 0x28 + 3: SRA(E); return 8;
+    case 0x28 + 4: SRA(H); return 8;
+    case 0x28 + 5: SRA(L); return 8;
+    case 0x2E: { UBYTE t = READ_MEM(HL); SRA(t); WRITE_MEM(HL, t); } return 15;
+
+      /* SLL */
+    case 0x30 + 7: SLL(A); return 8;
+    case 0x30 + 0: SLL(B); return 8;
+    case 0x30 + 1: SLL(C); return 8;
+    case 0x30 + 2: SLL(D); return 8;
+    case 0x30 + 3: SLL(E); return 8;
+    case 0x30 + 4: SLL(H); return 8;
+    case 0x30 + 5: SLL(L); return 8;
+    case 0x36: { UBYTE t = READ_MEM(HL); SLL(t); WRITE_MEM(HL, t); } return 15;
+
+      /* SRL */
+    case 0x38 + 7: SRL(A); return 8;
+    case 0x38 + 0: SRL(B); return 8;
+    case 0x38 + 1: SRL(C); return 8;
+    case 0x38 + 2: SRL(D); return 8;
+    case 0x38 + 3: SRL(E); return 8;
+    case 0x38 + 4: SRL(H); return 8;
+    case 0x38 + 5: SRL(L); return 8;
+    case 0x3E: { UBYTE t = READ_MEM(HL); SRL(t); WRITE_MEM(HL, t); } return 15;
+
+      /* SET */
+#define MSET1(b, rb, v) case 0xC0 + 8 * b + rb: SET(v, b); return 8;
+#define MSET(rb, v) MSET1(0, rb, v); MSET1(1, rb, v); MSET1(2, rb, v); MSET1(3, rb, v); \
+      MSET1(4, rb, v); MSET1(5, rb, v); MSET1(6, rb, v); MSET1(7, rb, v);
+      MSET(7, A); MSET(0, B); MSET(1, C); MSET(2, D);
+      MSET(3, E); MSET(4, H); MSET(5, L);
+#define MSETHL(b) case 0xC6 + 8 * b: { UBYTE t = READ_MEM(HL); SET(t, b); WRITE_MEM(HL, t); } return 15;
+      MSETHL(0); MSETHL(1); MSETHL(2); MSETHL(3);
+      MSETHL(4); MSETHL(5); MSETHL(6); MSETHL(7);
+
+      /* RES */
+#define MRES1(b, rb, v) case 0x80 + 8 * b + rb: RES(v, b); return 8;
+#define MRES(rb, v) MRES1(0, rb, v); MRES1(1, rb, v); MRES1(2, rb, v); MRES1(3, rb, v); \
+      MRES1(4, rb, v); MRES1(5, rb, v); MRES1(6, rb, v); MRES1(7, rb, v);
+      MRES(7, A); MRES(0, B); MRES(1, C); MRES(2, D);
+      MRES(3, E); MRES(4, H); MRES(5, L);
+#define MRESHL(b) case 0x86 + 8 * b: { UBYTE t = READ_MEM(HL); RES(t, b); WRITE_MEM(HL, t); } return 15;
+      MRESHL(0); MRESHL(1); MRESHL(2); MRESHL(3);
+      MRESHL(4); MRESHL(5); MRESHL(6); MRESHL(7);
+
+      /* BIT */
+#define MBIT1(b, rb, v) case 0x40 + 8 * b + rb: BIT(v, b); return 8;
+#define MBIT(rb, v) MBIT1(0, rb, v); MBIT1(1, rb, v); MBIT1(2, rb, v); MBIT1(3, rb, v); \
+      MBIT1(4, rb, v); MBIT1(5, rb, v); MBIT1(6, rb, v); MBIT1(7, rb, v);
+      MBIT(7, A); MBIT(0, B); MBIT(1, C); MBIT(2, D);
+      MBIT(3, E); MBIT(4, H); MBIT(5, L);
+#define MBITHL(b) case 0x46 + 8 * b: { UBYTE t = READ_MEM(HL); BIT(t, b); WRITE_MEM(HL, t); } return 12;
+      MBITHL(0); MBITHL(1); MBITHL(2); MBITHL(3);
+      MBITHL(4); MBITHL(5); MBITHL(6); MBITHL(7);
+
+    default:
+      std::cout << std::hex << "Unknown extended opcode ("
+                << opcode << "): " << static_cast<int>(opcode) << std::endl;
+      break;
+    }
+  } break; // END 0xCB
 
 
   default:
@@ -645,6 +861,48 @@ void Z80::CP(UBYTE a, UBYTE b)
   F_C = r > a;
 }
 
+void Z80::CPD()
+{
+  UBYTE a = A;
+  UBYTE b = READ_MEM(HL);
+  UBYTE r = a - b;
+  HL--; BC--;
+  F_S = (r >> 7); F_Z = (r == 0);
+  F_H = (r & 0xf) > (a & 0xf);
+  F_PV = (a >> 7) == (b >> 7) && (a >> 7) != F_S; // to see
+  F_N = 1;
+}
+
+BYTE Z80::CPDR()
+{
+  CPD();
+  if (F_Z == 0 || BC == 0)
+    return 1;
+  PC -= 2;
+  return 21;
+}
+
+void Z80::CPI()
+{
+  UBYTE a = A;
+  UBYTE b = READ_MEM(HL);
+  UBYTE r = a - b;
+  HL++; BC--;
+  F_S = (r >> 7); F_Z = (r == 0);
+  F_H = (r & 0xf) > (a & 0xf);
+  F_PV = (a >> 7) == (b >> 7) && (a >> 7) != F_S; // to see
+  F_N = 1;
+}
+
+BYTE Z80::CPIR()
+{
+  CPI();
+  if (F_Z == 0 || BC == 0)
+    return 1;
+  PC -= 2;
+  return 21;
+}
+
 // SZHPNC -> ***V1-
 void Z80::DEC8(UBYTE& a)
 {
@@ -682,6 +940,28 @@ void Z80::INC16(UWORD& a)
 void Z80::EX(UWORD& a, UWORD& b)
 {
   a ^= b; b ^= a; a ^= b;
+}
+
+UBYTE Z80::IN(UBYTE a)
+{
+  return READ_IO(a);
+}
+
+void Z80::OUT(UBYTE a)
+{
+  WRITE_IO(C, a);
+}
+
+void Z80::NEG(UBYTE& a)
+{
+  UBYTE r = 0 - a;
+  F_S = (r >> 7);
+  F_Z = (r == 0);
+  F_H = (a == 0); // to check
+  F_PV = (a == 0x80);
+  F_N = 1;
+  F_C = (a == 0);
+  a = r;
 }
 
 } // !WSMS

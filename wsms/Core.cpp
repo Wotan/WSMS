@@ -1,6 +1,8 @@
 #include <iostream>
+#include <cstdio>
 
 #include "Core.hh"
+#include "Debugger.hh"
 
 namespace WSMS {
 
@@ -31,11 +33,19 @@ void Core::loadCartridge(std::string const& fileName)
 
 void Core::run()
 {
-  uint32_t cycles = 0;
+  if (1) {
+    Debugger debugger;
 
-  // while (_running) {
-    cycles += _cpu->step();
-  // }
+    debugger.setCPU(_cpu);
+    debugger.setMMU(_mmu);
+    debugger.run();
+  } else {
+    uint32_t cycles = 0;
+
+    while (_running) {
+      cycles += _cpu->step();
+    }
+  }
 }
 
 }

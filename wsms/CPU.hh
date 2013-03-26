@@ -49,6 +49,9 @@ typedef union
 # define H _AF.hi
 # define L _AF.lo
 
+# define I _I
+# define R _R
+
 # define AF _AF.a
 # define BC _BC.a
 # define DE _DE.a
@@ -86,16 +89,27 @@ typedef union
 # define EXT_OPCODE(op) case (op): { UBYTE opcode = READ_MEM(PC++); switch(opcode) {
 # define EXT_OPCODE_END(op) default: UNKNOW_EXT_OPCODE(op) return 0; } } break;
 
+# define UNSUPPORTED_INSTR std::cout << "Unsupported instr" << std::endl;
+
+typedef enum {
+  INT_MODE_0,
+  INT_MODE_1,
+  INT_MODE_2
+} interuptMode;
+
+class Debugger;
+
 class Z80 {
+  friend class Debugger;
 public:
   Z80();
   virtual ~Z80();
-  void registerMMU (MMU* mmu) {
-    _mmu = mmu;
-  }
+  void registerMMU (MMU* mmu) { _mmu = mmu; }
   int step();
 
   UBYTE indexInstructions(UWORD& X, UBYTE opcode);
+  void setIntMode(interuptMode intMode) { _intMode = intMode; }
+  void setIntEnable(bool e = true) { _intEnabled = e; }
 
   void push8(UBYTE value);
   void push16(UWORD value);
@@ -128,12 +142,23 @@ public:
   void SET(UBYTE& v, UBYTE bit);
 
   bool CALL(bool cond);
+
   void CP(UBYTE a, UBYTE b);
+  void CPD();
+  BYTE CPDR();
+  void CPI();
+  BYTE CPIR();
+
   void DEC8(UBYTE& a);
   void DEC16(UWORD& a);
   void INC8(UBYTE& a);
   void INC16(UWORD& a);
   void EX(UWORD& a, UWORD& b);
+
+  UBYTE IN(UBYTE a);
+  void OUT(UBYTE a);
+
+  void NEG(UBYTE& a);
 
 private:
   FRegister _AF;
@@ -154,6 +179,9 @@ private:
   UWORD _sHL;
 
   MMU* _mmu;
+
+  bool _intEnabled;
+  interuptMode _intMode;
 };
 
 } // !WSMS

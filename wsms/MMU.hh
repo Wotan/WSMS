@@ -59,8 +59,8 @@ public:
   }
 
   inline UWORD readMem16(UWORD addr) {
-    UWORD ret = readMem(addr) << 8;
-    ret |= readMem(addr + 1);
+    UWORD ret = readMem(addr + 1) << 8;
+    ret |= readMem(addr);
     return ret;
   }
 
