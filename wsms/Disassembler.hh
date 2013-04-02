@@ -1,6 +1,8 @@
 #ifndef _DASM_H_
 #define _DASM_H_
 
+# include "navi/Exception.hh"
+
 # include "WSMS.hh"
 
 struct InstrDesc {
@@ -12,6 +14,7 @@ struct InstrDesc {
 };
 
 class Disassembler {
+  DEFINE_EXCEPTION(Error);
 public:
   Disassembler() {}
   virtual ~Disassembler() {}

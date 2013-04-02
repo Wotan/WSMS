@@ -97,7 +97,7 @@ static InstrDesc const instrTab[] = {
   {0xDD, 0x2B, 0x00, 2, "DEC IX"},
   {0xFD, 0x2B, 0x00, 2, "DEC IY"},
   {0xF3, 0x00, 0x00, 1, "DI"},
-  {0x10, 0x00, 0x00, 1, "DJNZ $+2"},
+  {0x10, 0x00, 0x00, 1, "DJNZ $%N%+2"},
   {0xFB, 0x00, 0x00, 1, "EI"},
   {0xE3, 0x00, 0x00, 1, "EX (SP),HL"},
   {0xDD, 0xE3, 0x00, 2, "EX (SP),IX"},
@@ -521,8 +521,7 @@ InstrDesc Disassembler::findInstruction(UBYTE* mem)
     }
     ++i;
   }
-  std::cout << "Disassembler Error" << std::endl;
-  throw;
+  throw Error("Unknow instruction");
 }
 
 bool Disassembler::findPattern(char const* pattern, char const* str)
