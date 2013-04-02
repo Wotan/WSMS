@@ -2,6 +2,7 @@
 #define _DEBUGGER_H_
 
 # include <map>
+# include <set>
 # include <vector>
 
 # include "WSMS.hh"
@@ -16,6 +17,7 @@ class Debugger {
   typedef std::vector<std::string> Command;
   typedef void (Debugger::*CommandCallback)(Command const&);
   typedef std::map<std::string, CommandCallback> CommandMap;
+  typedef std::set<UWORD> BreakpointSet;
 public:
   Debugger();
   virtual ~Debugger() {}
@@ -28,22 +30,25 @@ public:
   void executeCommand(Command const& cmd);
   void run();
 
-  bool toBase10(std::string const& str, int& num);
+  bool getAddress(std::string const& str, int& num);
   bool toBase10(std::string const& str, int& num , int base);
-
+  int disasInstr(UWORD addr);
   void printReg(UWORD reg);
+  UWORD getRegisterValue(std::string const& reg);
 
   void cmdNext(Command const&);
   void cmdExamineInstr(Command const&);
-  int disasInstr(UWORD addr);
-
   void cmdReg(Command const& cmd);
+  void cmdBreakpoint(Command const& cmd);
+  void cmdRun(Command const& cmd);
+  void cmdExamineMem(Command const& cmd);
 
 private:
   Z80* _cpu;
   MMU* _mmu;
   CommandMap _commands;
   Disassembler _disasembler;
+  BreakpointSet _breakpoints;
 };
 
 } // !WSMS

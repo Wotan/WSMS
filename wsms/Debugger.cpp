@@ -16,9 +16,11 @@ Debugger::Debugger()
   _commands["next"] = &Debugger::cmdNext;
   _commands["n"] = &Debugger::cmdNext;
   _commands["xi"] = &Debugger::cmdExamineInstr;
+  _commands["x"] = &Debugger::cmdExamineMem;
   _commands["reg"] = &Debugger::cmdReg;
-  // _commands["breakpoint"] = &Debugger::cmdBreakpoint;
-  // _commands["b"] = &Debugger::cmdBreakpoint;
+  _commands["breakpoint"] = &Debugger::cmdBreakpoint;
+  _commands["b"] = &Debugger::cmdBreakpoint;
+  _commands["run"] = &Debugger::cmdRun;
 }
 
 bool Debugger::getCommand(std::string& line)
@@ -80,13 +82,13 @@ int Debugger::disasInstr(UWORD addr)
     for (int i = 0; i < 5; ++i)
       mem[i] = READ_MEM(addr + i);
   } catch (std::exception const&) {
-    printf("0x%08x: Cannot access memory at address 0x%x\n", addr, addr);
+    printf("0x%04x: Cannot access memory at address 0x%x\n", addr, addr);
     return 1;
   }
   if (addr == _cpu->_PC)
-    printf("=>0x%08x: ", addr);
+    printf("=>0x%04x: ", addr);
   else
-    printf("  0x%08x: ", addr);
+    printf("  0x%04x: ", addr);
   return _disasembler.displayInstruction(mem, 5);
 }
 
@@ -94,11 +96,28 @@ void Debugger::cmdNext(Command const& cmd)
 {
   int nb = 1;
   if (cmd.size() > 1) {
-    toBase10(cmd.at(1), nb);
+    getAddress(cmd.at(1), nb);
   }
   for (int i = 0; i < nb; ++i)
     _cpu->step();
   disasInstr(_cpu->PC);
+}
+
+UWORD Debugger::getRegisterValue(std::string const& reg)
+{
+#define STR_REG(v) else if (reg == #v) { return _cpu->v; }
+
+  if (reg == "PC")
+    return _cpu->PC;
+  STR_REG(AF)
+  STR_REG(BC)
+  STR_REG(DE)
+  STR_REG(HL)
+  STR_REG(IX)
+  STR_REG(IY)
+  STR_REG(PC)
+  STR_REG(SP)
+  return 0;
 }
 
 bool Debugger::toBase10(std::string const& str, int& num , int base)
@@ -120,10 +139,12 @@ bool Debugger::toBase10(std::string const& str, int& num , int base)
   return true;
 }
 
-bool Debugger::toBase10(std::string const& str, int& num)
+bool Debugger::getAddress(std::string const& str, int& num)
 {
-  if (std::strncmp(str.c_str(), "0x", 2) == 0) {
+  if (std::strncmp(str.c_str(), "0x", 2) == 0) { // Hexa
       return toBase10(std::string(str.c_str() + 2), num, 16);
+  } else if (str[0] == '$') { // register
+    num = getRegisterValue(std::string(str.c_str() + 1));
   } else {
     try {
       num = navi::LexicalCast<int>(str);
@@ -138,19 +159,42 @@ bool Debugger::toBase10(std::string const& str, int& num)
 void Debugger::cmdExamineInstr(Command const& cmd)
 {
   if (cmd.size() < 2) {
-    std::cerr << "Command: " << cmd.at(0) << ": not enought arguments" << std::endl;
+    std::cerr << "Command: " << cmd.at(0) << ": not enough arguments" << std::endl;
     return;
   }
   int size = 1;
   int address = 0;
   if (cmd.size() > 2) {
-    toBase10(cmd.at(1), size);
-    toBase10(cmd.at(2), address);
+    getAddress(cmd.at(1), size);
+    getAddress(cmd.at(2), address);
   } else {
-    toBase10(cmd.at(1), address);
+    getAddress(cmd.at(1), address);
   }
   for (int i = 0; i < size;)
     i += disasInstr(address + i);
+}
+
+void Debugger::cmdExamineMem(Command const& cmd)
+{
+  if (cmd.size() < 2) {
+    std::cerr << "Command: " << cmd.at(0) << ": not enough arguments" << std::endl;
+    return;
+  }
+  int size = 1;
+  int address = 0;
+  if (cmd.size() > 2) {
+    getAddress(cmd.at(1), size);
+    getAddress(cmd.at(2), address);
+  } else {
+    getAddress(cmd.at(1), address);
+  }
+  for (int i = 0; i < size;) {
+    printf("%04X: ", address + i);
+    for (int j = 0; j < 8 && i < size; ++j, ++i) {
+      printf("%02X ", _cpu->READ_MEM(address + i + j));
+    }
+    printf("\n");
+  }
 }
 
 void Debugger::printReg(UWORD reg)
@@ -161,7 +205,7 @@ void Debugger::printReg(UWORD reg)
   printf(")\n");
 }
 
-void Debugger::cmdReg(Command const& cmd)
+void Debugger::cmdReg(Command const&)
 {
   printf("S Z 5 H 3 P N C\n");
   printf("%i %i %i %i %i %i %i %i\n",
@@ -175,6 +219,53 @@ void Debugger::cmdReg(Command const& cmd)
   printf("SP = 0x%04x\n", _cpu->SP);
   printf("IX = 0x%04x IY = 0x%04x\n", _cpu->IX, _cpu->IY);
   printf("I  = 0x%02x  R  = 0x%02x\n", _cpu->I, _cpu->R);
+}
+
+void Debugger::cmdBreakpoint(Command const& cmd)
+{
+  std::string action = "add";
+  int addr;
+  if (cmd.size() == 1) {
+    std::cout << "Breakpoints:" << std::endl;
+    int i = 1;
+    for (BreakpointSet::iterator it = _breakpoints.begin();
+         it != _breakpoints.end(); ++i, ++it) {
+      printf("#%i 0x%04x\n", i, *it);
+    }
+    return;
+  } else if (cmd.size() == 2) {
+    getAddress(cmd.at(1), addr);
+  } else {
+    action = cmd.at(1);
+    getAddress(cmd.at(2), addr);
+  }
+
+  if (action == "add") {
+    _breakpoints.insert(addr);
+    std::cout << "Breakpoint set at address 0x" << std::hex << addr << std::endl;
+  } else if (action == "remove") {
+    BreakpointSet::iterator it = _breakpoints.find(addr);
+    if (it == _breakpoints.end())
+      std::cerr << "Breakpoint 0x" << addr << " doesn't exist" << std::endl;
+    else {
+      _breakpoints.erase(it);
+      std::cout << "Breakpoint removed at address 0x" << std::hex << addr << std::endl;
+    }
+  } else {
+    std::cerr << "Unknow action \"" << cmd.at(1) << "\"" << std::endl;
+  }
+}
+
+void Debugger::cmdRun(Command const&)
+{
+  bool run = true;
+  while (run) {
+    _cpu->step();
+    if (_breakpoints.find(_cpu->PC) != _breakpoints.end()) {
+      run = false;
+      disasInstr(_cpu->PC);
+    }
+  }
 }
 
 } // !WSMS
