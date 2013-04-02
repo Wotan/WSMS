@@ -120,7 +120,14 @@ int Z80::step()
   case 0xF3: setIntEnable(false); return 4;
 
     /* DJNZ */
-  case 0x10: return 0;
+  case 0x10: {
+    B--;
+    if (B == 0) {
+      PC += static_cast<BYTE>(READ_MEM(PC) + 1); return 13;
+    } else {
+      return 8;
+    }
+  }
 
     /* EI */
   case 0xFB: setIntEnable(true); return 4;
