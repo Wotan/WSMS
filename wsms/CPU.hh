@@ -42,12 +42,12 @@ typedef union
 
 # define A _AF.hi
 # define F _AF.lo
-# define B _AF.hi
-# define C _AF.lo
-# define D _AF.hi
-# define E _AF.lo
-# define H _AF.hi
-# define L _AF.lo
+# define B _BC.hi
+# define C _BC.lo
+# define D _DE.hi
+# define E _DE.lo
+# define H _HL.hi
+# define L _HL.lo
 
 # define I _I
 # define R _R
@@ -72,14 +72,14 @@ typedef union
 # define F_Z _AF.z
 # define F_S _AF.s
 
-# define READ_MEM(a) (_mmu->readMem(a))
-# define WRITE_MEM(a, d) (_mmu->writeMem(a, d))
+# define READ_MEM(a) _mmu->readMem(a)
+# define WRITE_MEM(a, d) _mmu->writeMem(a, d)
 
-# define READ_MEM16(a) (_mmu->readMem16(a))
-# define WRITE_MEM16(a, d) (_mmu->writeMem16(a, d))
+# define READ_MEM16(a) _mmu->readMem16(a)
+# define WRITE_MEM16(a, d) _mmu->writeMem16(a, d)
 
-# define READ_IO(a) (_mmu->readIOPorts(a))
-# define WRITE_IO(a, d) (_mmu->writeIOPorts(a, d))
+# define READ_IO(a) _mmu->readIOPorts(a)
+# define WRITE_IO(a, d) _mmu->writeIOPorts(a, d)
 
 # define UNKNOW_EXT_OPCODE(op) \
   std::cout << "Unknown extended opcode (" << op << "): " << std::hex \
@@ -98,12 +98,15 @@ typedef enum {
 } interuptMode;
 
 class Debugger;
+class Core;
 
 class Z80 {
   friend class Debugger;
 public:
   Z80();
   virtual ~Z80();
+
+  void registerCore(Core* core) { _core = core; }
   void registerMMU (MMU* mmu) { _mmu = mmu; }
   int step();
 
@@ -179,6 +182,7 @@ private:
   UWORD _sHL;
 
   MMU* _mmu;
+  Core* _core;
 
   bool _intEnabled;
   interuptMode _intMode;
