@@ -2,6 +2,7 @@
 
 #include "CPU.hh"
 #include "Disassembler.hh"
+#include "Core.hh"
 
 namespace WSMS {
 
@@ -431,10 +432,10 @@ int Z80::step()
 
 #define OUTD() OUT(READ_MEM(HL)); HL--; B--; F_N = 1; F_Z = (B == 0);
     case 0xAB: OUTD(); return 16;
-    case 0xBB: OUTD(); if (B == 0) { return 1; } PC -= 2; return 21;
-#define OUTI() OUT(READ_MEM(HL)); HL--; B--; F_N = 1; F_Z = (B == 0);
+    case 0xBB: OUTD(); if (B == 0) { return 1; } PC -= 2; return 21; // OTDR
+#define OUTI() OUT(READ_MEM(HL)); HL++; B--; F_N = 1; F_Z = (B == 0);
     case 0xA3: OUTI(); return 16;
-    case 0xB3: OUTI(); if (B == 0) { return 1; } PC -= 2; return 21;
+    case 0xB3: OUTI(); if (B == 0) { return 1; } PC -= 2; return 21; // OTIR
 
       /* LD */
     case 0x47: I = A; return 9;

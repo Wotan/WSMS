@@ -50,8 +50,6 @@ public:
   MMU();
   ~MMU();
   void loadCartridge(std::string const& fileName);
-  UBYTE readIOPorts(UWORD);
-  void writeIOPorts(UWORD, UBYTE);
 
   inline UBYTE readMem(UWORD addr) {
     assert(_mapper);

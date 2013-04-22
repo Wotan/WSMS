@@ -30,7 +30,7 @@ void MMU::loadCartridge(std::string const& fileName)
   _cartridgeSize = file.gcount();
   if (_cartridgeSize < minCartridgeSize) {
     throw MMUException("%s: invalid cartridge: too small (%i)",
-		       fileName.c_str(), _cartridgeSize);
+        	       fileName.c_str(), _cartridgeSize);
   }
   _mapper = new SegaMapper(_cartridgeRom);
   _cartridgeInfos.fileName = fileName;
@@ -89,15 +89,6 @@ void MMU::readHeader()
   std::cout << "Cartridge seems to be not valid" << std::endl;
 }
 
-UBYTE MMU::readIOPorts(UWORD)
-{
-  return 0;
-}
-
-void MMU::writeIOPorts(UWORD, UBYTE)
-{
-}
-
 UBYTE SegaMapper::read(UWORD addr)
 {
   if (addr <= 0x03ff) { // unpaged
@@ -110,7 +101,7 @@ UBYTE SegaMapper::read(UWORD addr)
     return _cartridgeRom[(_ram[0x1fff] & 0x3F) * 0x4000 + addr - 0x8000];
   } else if (addr <= 0xdfff) { // ram
     return _ram[addr - 0xc000];
-  } else if (addr <= 0xffff) { // miror ram
+  } else if (addr <= 0xffff) { // mirror ram
     return _ram[addr - 0xe000];
   } else {
     throw MMU::MMUException("MMU: invalid read address 0x%X", addr);
@@ -119,14 +110,8 @@ UBYTE SegaMapper::read(UWORD addr)
 
 void SegaMapper::write(UWORD addr, UBYTE value)
 {
-  if (addr <= 0x03ff) { // unpaged
-    _cartridgeRom[addr] = value;
-  } else if (addr <= 0x3fff) { // slot 0
-    _cartridgeRom[(_ram[0x1ffd] & 0x3F) * 0x4000 + addr] = value;
-  } else if (addr <= 0x7fff) { // slot 1
-    _cartridgeRom[(_ram[0x1ffe] & 0x3F) * 0x4000 + addr] = value;
-  } else if (addr <= 0xbfff) { // slot 2 or ram
-    _cartridgeRom[(_ram[0x1fff] & 0x3F) * 0x4000 + addr] = value;
+  if (addr <= 0xbfff) { // slot 2 or ram
+    throw MMU::MMUException("MMU: invalid write address 0x%X (memory is read only)", addr);
   } else if (addr <= 0xdfff) { // ram
     _ram[addr - 0xc000] = value;
   } else if (addr <= 0xffff) { // miror ram

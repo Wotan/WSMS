@@ -99,7 +99,7 @@ void Debugger::cmdNext(Command const& cmd)
     getAddress(cmd.at(1), nb);
   }
   for (int i = 0; i < nb; ++i)
-    _cpu->step();
+    _core->step();
   disasInstr(_cpu->PC);
 }
 
@@ -158,16 +158,12 @@ bool Debugger::getAddress(std::string const& str, int& num)
 
 void Debugger::cmdExamineInstr(Command const& cmd)
 {
-  if (cmd.size() < 2) {
-    std::cerr << "Command: " << cmd.at(0) << ": not enough arguments" << std::endl;
-    return;
-  }
-  int size = 1;
-  int address = 0;
+  int size = 0x10;
+  int address = _cpu->PC;
   if (cmd.size() > 2) {
     getAddress(cmd.at(1), size);
     getAddress(cmd.at(2), address);
-  } else {
+  } else if (cmd.size() > 1) {
     getAddress(cmd.at(1), address);
   }
   for (int i = 0; i < size;)
@@ -260,7 +256,7 @@ void Debugger::cmdRun(Command const&)
 {
   bool run = true;
   while (run) {
-    _cpu->step();
+    _core->step();
     if (_breakpoints.find(_cpu->PC) != _breakpoints.end()) {
       run = false;
       disasInstr(_cpu->PC);

@@ -7,6 +7,7 @@
 
 # include "WSMS.hh"
 # include "Disassembler.hh"
+# include "Core.hh"
 
 namespace WSMS {
 
@@ -24,6 +25,7 @@ public:
 
   void setCPU(Z80 *cpu) { _cpu = cpu; }
   void setMMU(MMU *mmu) { _mmu = mmu; }
+  void setCore(Core *core) { _core = core; }
 
   bool getCommand(std::string& line);
   bool parseCommand(std::string const& line, Command& cmd);
@@ -44,6 +46,7 @@ public:
   void cmdExamineMem(Command const& cmd);
 
 private:
+  Core* _core;
   Z80* _cpu;
   MMU* _mmu;
   CommandMap _commands;

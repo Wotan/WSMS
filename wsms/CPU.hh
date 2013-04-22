@@ -78,8 +78,8 @@ typedef union
 # define READ_MEM16(a) _mmu->readMem16(a)
 # define WRITE_MEM16(a, d) _mmu->writeMem16(a, d)
 
-# define READ_IO(a) _mmu->readIOPorts(a)
-# define WRITE_IO(a, d) _mmu->writeIOPorts(a, d)
+# define READ_IO(a) _core->readIOPorts(a)
+# define WRITE_IO(a, d) _core->writeIOPorts(a, d)
 
 # define UNKNOW_EXT_OPCODE(op) \
   std::cout << "Unknown extended opcode (" << op << "): " << std::hex \
